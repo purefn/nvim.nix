@@ -150,7 +150,7 @@ with lib;
     extraMakeWrapperArgs = 
       let 
         libsqlite3 = "${pkgs.sqlite.out}/lib/libsqlite3." 
-          + (if stdenv.isDarwin then "dynlib" else ".so");
+          + (if stdenv.isDarwin then "dylib" else ".so");
       in builtins.concatStringsSep " " (
         # Set the NVIM_APPNAME environment variable
         (optional (appName != "nvim" && appName != null && appName != "")
