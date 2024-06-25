@@ -147,20 +147,24 @@ with lib;
       '';
 
     # Add arguments to the Neovim wrapper script
-    extraMakeWrapperArgs = builtins.concatStringsSep " " (
-      # Set the NVIM_APPNAME environment variable
-      (optional (appName != "nvim" && appName != null && appName != "")
-        ''--set NVIM_APPNAME "${appName}"'')
-      # Add external packages to the PATH
-      ++ (optional (externalPackages != [])
-        ''--prefix PATH : "${makeBinPath externalPackages}"'')
-      # Set the LIBSQLITE_CLIB_PATH if sqlite is enabled
-      ++ (optional withSqlite
-        ''--set LIBSQLITE_CLIB_PATH "${pkgs.sqlite.out}/lib/libsqlite3.so"'')
-      # Set the LIBSQLITE environment variable if sqlite is enabled
-      ++ (optional withSqlite
-        ''--set LIBSQLITE "${pkgs.sqlite.out}/lib/libsqlite3.so"'')
-    );
+    extraMakeWrapperArgs = 
+      let 
+        libsqlite3 = "${pkgs.sqlite.out}/lib/libsqlite3." 
+          + (if stdenv.isDarwin then "dynlib" else ".so");
+      in builtins.concatStringsSep " " (
+        # Set the NVIM_APPNAME environment variable
+        (optional (appName != "nvim" && appName != null && appName != "")
+          ''--set NVIM_APPNAME "${appName}"'')
+        # Add external packages to the PATH
+        ++ (optional (externalPackages != [])
+          ''--prefix PATH : "${makeBinPath externalPackages}"'')
+        # Set the LIBSQLITE_CLIB_PATH if sqlite is enabled
+        ++ (optional withSqlite
+          ''--set LIBSQLITE_CLIB_PATH "${libsqlite3}"'')
+        # Set the LIBSQLITE environment variable if sqlite is enabled
+        ++ (optional withSqlite
+          ''--set LIBSQLITE "${libsqlite3}"'')
+      );
 
     luaPackages = neovim-unwrapped.lua.pkgs;
     resolvedExtraLuaPackages = extraLuaPackages luaPackages;
