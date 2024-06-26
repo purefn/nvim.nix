@@ -1,6 +1,7 @@
 local cmd = vim.cmd
 local fn = vim.fn
 local opt = vim.o
+local keymap = vim.keymap
 local g = vim.g
 
 -- <leader> key. Defaults to `\`. Some people prefer space.
