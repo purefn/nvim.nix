@@ -56,8 +56,10 @@ vim.api.nvim_create_autocmd('BufEnter', {
   end,
 })
 
+local lsp_augroup = vim.api.nvim_create_augroup('UserLspConfig', {})
+
 vim.api.nvim_create_autocmd('LspAttach', {
-  group = vim.api.nvim_create_augroup('UserLspConfig', {}),
+  group = lsp_augroup,
   callback = function(ev)
     local bufnr = ev.buf
     local client = vim.lsp.get_client_by_id(ev.data.client_id)
@@ -152,8 +154,6 @@ api.nvim_create_autocmd({ 'BufLeave', 'FocusLost', 'InsertEnter', 'CmdlineEnter'
     end
   end,
 })
-
-local lsp_augroup = vim.api.nvim_create_augroup('UserLspConfig', {})
 
 vim.api.nvim_create_autocmd('LspProgress', {
   group = lsp_augroup,
