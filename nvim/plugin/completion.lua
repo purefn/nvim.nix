@@ -1,19 +1,13 @@
-if vim.g.did_load_completion_plugin then
+if vim.g.completion_setup_done then
   return
 end
-vim.g.did_load_completion_plugin = true
+vim.g.completion_setup_done = true
 
+---@diagnostic disable: missing-fields
 local cmp = require('cmp')
 local lspkind = require('lspkind')
-local luasnip = require('luasnip')
 
 vim.opt.completeopt = { 'menu', 'menuone', 'noselect' }
-
-local function has_words_before()
-  local unpack_ = unpack or table.unpack
-  local line, col = unpack_(vim.api.nvim_win_get_cursor(0))
-  return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match('%s') == nil
-end
 
 ---@param source string|table
 local function complete_with_source(source)
@@ -24,10 +18,14 @@ local function complete_with_source(source)
   end
 end
 
+local function complete_with_source_mapping(name, modes)
+  return cmp.mapping.complete { config = { sources = { { name = name } } }, modes }
+end
+
 cmp.setup {
   completion = {
     completeopt = 'menu,menuone,noinsert',
-    -- autocomplete = false,
+    autocomplete = false,
   },
   formatting = {
     format = lspkind.cmp_format {
@@ -44,6 +42,12 @@ cmp.setup {
         nvim_lua = '[API]',
         path = '[PATH]',
         luasnip = '[SNIP]',
+        luasnip_choice = '[CHOICE]',
+        rg = '[RG]',
+        cmdline = '[CMD]',
+        cmdline_history = '[HISTORY]',
+        cmp_git = '[GIT]',
+        tmux = '[TMUX]',
       },
     },
   },
@@ -70,12 +74,10 @@ cmp.setup {
     ['<C-n>'] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_next_item()
-      -- expand_or_jumpable(): Jump outside the snippet region
-      -- expand_or_locally_jumpable(): Only jump inside the snippet region
-      elseif luasnip.expand_or_locally_jumpable() then
-        luasnip.expand_or_jump()
-      elseif has_words_before() then
-        cmp.complete()
+        -- expand_or_jumpable(): Jump outside the snippet region
+        -- expand_or_locally_jumpable(): Only jump inside the snippet region
+      elseif require('luasnip').expand_or_locally_jumpable() then
+        require('luasnip').expand_or_jump()
       else
         fallback()
       end
@@ -83,8 +85,8 @@ cmp.setup {
     ['<C-p>'] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_prev_item()
-      elseif luasnip.jumpable(-1) then
-        luasnip.jump(-1)
+      elseif require('luasnip').locally_jumpable(-1) then
+        require('luasnip').jump(-1)
       else
         fallback()
       end
@@ -97,15 +99,30 @@ cmp.setup {
         cmp.complete()
       end
     end, { 'i', 'c', 's' }),
-    ['<C-y>'] = cmp.mapping.confirm {
-      select = true,
-    },
+    ['<C-y>'] = cmp.mapping(function(_)
+      local entry = cmp.get_selected_entry()
+      if not entry then
+        cmp.select_next_item { behavior = cmp.SelectBehavior.Select }
+      end
+      cmp.confirm {
+        select = true,
+      }
+    end, { 'i', 'c', 's' }),
+    -- ['<C-o>'] = complete_with_source_mapping('omni', { 'i', 'c' }),
+    ['<C-s>'] = complete_with_source_mapping('luasnip', { 'i', 's' }),
   },
   sources = cmp.config.sources {
-    -- The insertion order influences the priority of the sources
+    -- The insertion order appears to influence the priority of the sources
     { name = 'nvim_lsp', keyword_length = 3 },
     { name = 'nvim_lsp_signature_help', keyword_length = 3 },
+    { name = 'luasnip_choice' }, -- luasnip choice nodes
     { name = 'buffer' },
+    { name = 'rg', keyword_length = 3 },
+    {
+      name = 'tmux',
+      keyword_length = 3,
+      all_panes = true,
+    },
     { name = 'path' },
   },
   enabled = function()
@@ -121,6 +138,24 @@ cmp.setup.filetype('lua', {
   sources = cmp.config.sources {
     { name = 'nvim_lua' },
     { name = 'nvim_lsp', keyword_length = 3 },
+    { name = 'nvim_lsp_signature_help', keyword_length = 3 },
+    { name = 'luasnip_choice' }, -- luasnip choice nodes
+    { name = 'rg', keyword_length = 3 },
+    { name = 'buffer', keyword_length = 3 },
+    {
+      name = 'tmux',
+      keyword_length = 3,
+      all_panes = true,
+    },
+    { name = 'path' },
+  },
+})
+
+cmp.setup.filetype('norg', {
+  sources = cmp.config.sources {
+    { name = 'neorg' },
+    { name = 'rg' },
+    { name = 'buffer' },
     { name = 'path' },
   },
 })
@@ -140,7 +175,12 @@ cmp.setup.cmdline({ '/', '?' }, {
 
 -- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
 cmp.setup.cmdline(':', {
-  mapping = cmp.mapping.preset.cmdline(),
+  mapping = cmp.mapping.preset.cmdline {
+    ['<tab>'] = {
+      -- i = ...,
+      c = cmp.config.disable,
+    },
+  },
   sources = cmp.config.sources {
     { name = 'cmdline' },
     { name = 'cmdline_history' },
@@ -148,16 +188,31 @@ cmp.setup.cmdline(':', {
   },
 })
 
-vim.keymap.set({ 'i', 'c', 's' }, '<C-n>', cmp.complete, { noremap = false, desc = '[cmp] complete' })
+require('cmp_luasnip_choice').setup()
+
+vim.keymap.set({ 'i', 'c', 's' }, '<C-n>', cmp.complete, { noremap = false, desc = 'cmp: complete' })
 vim.keymap.set({ 'i', 'c', 's' }, '<C-f>', function()
   complete_with_source('path')
-end, { noremap = false, desc = '[cmp] path' })
+end, { noremap = false, desc = 'cmp: path' })
+vim.keymap.set({ 'i', 'c', 's' }, '<C-g>', function()
+  complete_with_source('rg')
+end, { noremap = false, desc = 'cmp: rg' })
 vim.keymap.set({ 'i', 'c', 's' }, '<C-o>', function()
   complete_with_source('nvim_lsp')
-end, { noremap = false, desc = '[cmp] lsp' })
+end, { noremap = false, desc = 'cmp: lsp' })
+vim.keymap.set({ 'i', 'c', 's' }, '<C-t>', function()
+  complete_with_source {
+    name = 'tmux',
+    keyword_length = 3,
+    all_panes = true,
+  }
+end, { noremap = false, desc = 'cmp: tmux' })
 vim.keymap.set({ 'c' }, '<C-h>', function()
   complete_with_source('cmdline_history')
-end, { noremap = false, desc = '[cmp] cmdline history' })
+end, { noremap = false, desc = 'cmp: cmdline history' })
 vim.keymap.set({ 'c' }, '<C-c>', function()
   complete_with_source('cmdline')
-end, { noremap = false, desc = '[cmp] cmdline' })
+end, { noremap = false, desc = 'cmp: cmdline' })
+vim.keymap.set({ 'c' }, '<tab>', function()
+  complete_with_source('cmdline')
+end, { noremap = false, desc = 'cmp: cmdline' })

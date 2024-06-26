@@ -1,4 +1,3 @@
-
 local is_setup = false
 local is_active = false
 
@@ -43,4 +42,3 @@ end, { desc = '[s]ession: [l]oad' })
 vim.api.nvim_create_user_command('S', function()
   require('persistence').load()
 end, {})
-

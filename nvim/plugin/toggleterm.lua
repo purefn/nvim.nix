@@ -1,4 +1,3 @@
-
 local open_mapping = '<M-t>'
 local opts = { silent = true, noremap = true, desc = 'toggleterm' }
 vim.keymap.set('n', open_mapping, function()
@@ -33,4 +32,3 @@ vim.keymap.set('n', open_mapping, function()
   vim.cmd.set('hidden') -- Required to persist toggleterm sessions
   vim.cmd.ToggleTerm()
 end, opts)
-

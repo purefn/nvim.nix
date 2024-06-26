@@ -1,25 +1,15 @@
 local cmd = vim.cmd
-local fn = vim.fn
 local opt = vim.o
 local keymap = vim.keymap
 local g = vim.g
 
--- <leader> key. Defaults to `\`. Some people prefer space.
-g.mapleader = ' '
-g.maplocalleader = ' '
-
 opt.compatible = false
 
 -- Enable true colour support
-if fn.has('termguicolors') then
-  opt.termguicolors = true
-end
-
--- See :h <option> to see what the options do
+opt.termguicolors = true
 
 -- Search down into subfolders
 opt.path = vim.o.path .. '**'
-
 opt.number = true
 opt.relativenumber = true
 opt.cursorline = true
@@ -31,21 +21,44 @@ opt.hlsearch = true
 opt.spell = true
 opt.spelllang = 'en'
 
+-- On pressing tab, insert spaces
 opt.expandtab = true
+-- Show existing tab with 2 spaces width
 opt.tabstop = 2
 opt.softtabstop = 2
+-- When indenting with '>', use 2 spaces width
 opt.shiftwidth = 2
 opt.foldenable = true
+-- opt.foldlevelstart = 10 -- set in plugin.ufo
+-- opt.foldmethod = 'indent' -- fold based on indent level
 opt.history = 2000
+-- Increment numbers in decimal and hexadecimal formats
 opt.nrformats = 'bin,hex' -- 'octal'
+-- Persist undos between sessions
 opt.undofile = true
+-- Split right and below
 opt.splitright = true
 opt.splitbelow = true
+-- Global statusline
+-- opt.laststatus = 3 -- managed by lualine
+-- Hide command line unless typing a command or printing a message
 opt.cmdheight = 0
+
+-- Keep cursor in the middle of the pane while scrolling
+-- opt.scrolloff = 10000
 
 opt.fillchars = [[eob: ,fold: ,foldopen:,foldsep: ,foldclose:]]
 
--- Configure Neovim diagnostic messages
+g.markdown_syntax_conceal = 0
+
+-- See https://github.com/hrsh7th/nvim-compe/issues/286#issuecomment-805140394
+g.omni_sql_default_compl_type = 'syntax'
+
+-- Set default shell
+opt.shell = 'nu'
+
+opt.timeout = true
+opt.timeoutlen = 300
 
 local function prefix_diagnostic(prefix, diagnostic)
   return string.format(prefix .. ' %s', diagnostic.message)
@@ -73,7 +86,6 @@ vim.diagnostic.config {
   },
   signs = {
     text = {
-      -- Requires Nerd fonts
       [vim.diagnostic.severity.ERROR] = '󰅚',
       [vim.diagnostic.severity.WARN] = '⚠',
       [vim.diagnostic.severity.INFO] = 'ⓘ',
@@ -93,31 +105,20 @@ vim.diagnostic.config {
   },
 }
 
-g.editorconfig = true
-
-vim.opt.colorcolumn = '100'
-
--- Native plugins
-cmd.filetype('plugin', 'indent', 'on')
-cmd.packadd('cfilter') -- Allows filtering the quickfix list with :cfdo
-
--- let sqlite.lua (which some plugins depend on) know where to find sqlite
-vim.g.sqlite_clib_path = require('luv').os_getenv('LIBSQLITE')
-
-g.markdown_syntax_conceal = 0
-
--- See https://github.com/hrsh7th/nvim-compe/issues/286#issuecomment-805140394
-g.omni_sql_default_compl_type = 'syntax'
-
-opt.timeout = true
-opt.timeoutlen = 300
-
 vim.api.nvim_create_autocmd('BufEnter', {
   group = vim.api.nvim_create_augroup('DisableNewLineAutoCommentString', {}),
   callback = function()
     vim.opt.formatoptions = vim.opt.formatoptions - { 'c', 'r', 'o' }
   end,
 })
+
+g.editorconfig = true
+
+vim.opt.colorcolumn = '100'
+
+-- Native plugins
+cmd.filetype('plugin', 'indent', 'on')
+cmd.packadd('cfilter')
 
 -- Disable builtin plugins
 g.loaded_gzip = 1
@@ -194,6 +195,45 @@ g.haskell_tools = function()
     },
   }
   return ht_opts
+end
+
+---@return RustaceanOpts
+g.rustaceanvim = function()
+  ---@type RustaceanOpts
+  local rustacean_opts = {
+    tools = {
+      executor = 'toggleterm',
+    },
+    server = {
+      on_attach = function(...)
+        require('mrcjk.lsp').on_dap_attach(...)
+      end,
+      default_settings = {
+        ['rust-analyzer'] = {
+          cargo = {
+            allFeatures = true,
+            loadOutDirsFromCheck = true,
+            runBuildScripts = true,
+          },
+          procMacro = {
+            enable = true,
+            ignored = {
+              ['async-trait'] = { 'async_trait' },
+              ['napi-derive'] = { 'napi' },
+              ['async-recursion'] = { 'async_recursion' },
+            },
+          },
+          inlayHints = {
+            lifetimeElisionHints = {
+              enable = true,
+              useParameterNames = true,
+            },
+          },
+        },
+      },
+    },
+  }
+  return rustacean_opts
 end
 
 -- nvim-ts-context-commentstring

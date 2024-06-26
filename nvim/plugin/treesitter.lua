@@ -1,29 +1,37 @@
-if vim.g.did_load_treesitter_plugin then
-  return
-end
-vim.g.did_load_treesitter_plugin = true
+-- Files that have trouble with syntax highlighting
 
+local files = require('mrcjk.files')
+
+---@diagnostic disable: missing-fields
 local configs = require('nvim-treesitter.configs')
-vim.g.skip_ts_context_comment_string_module = true
-
----@diagnostic disable-next-line: missing-fields
 configs.setup {
   -- ensure_installed = 'all',
   -- auto_install = false, -- Do not automatically install missing parsers when entering buffer
   highlight = {
     enable = true,
     disable = function(_, buf)
+      if files.disable_treesitter_features(buf) then
+        return true
+      end
+      local fname = vim.api.nvim_buf_get_name(buf)
       local max_filesize = 100 * 1024 -- 100 KiB
-      local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
+      local ok, stats = pcall(vim.uv.fs_stat, fname)
       if ok and stats and stats.size > max_filesize then
         return true
       end
     end,
   },
+  indent = {
+    enable = true,
+  },
+  matchup = {
+    enable = true, -- mandatory, false will disable the whole extension
+    disable = { 'python' },
+  },
   textobjects = {
     select = {
       enable = true,
-      -- Automatically jump forward to textobject, similar to targets.vim
+      -- Automatically jump forward to textobj, similar to targets.vim
       lookahead = true,
       keymaps = {
         ['af'] = '@function.outer',
@@ -76,7 +84,7 @@ configs.setup {
         ['[P'] = '@parameter.outer',
       },
     },
-    nsp_interop = {
+    lsp_interop = {
       enable = true,
       peek_definition_code = {
         ['df'] = '@function.outer',
@@ -84,14 +92,21 @@ configs.setup {
       },
     },
   },
+  incremental_selection = {
+    enable = false,
+  },
+  query_linter = {
+    enable = true,
+    use_virtual_text = true,
+    lint_events = { 'BufWrite', 'CursorHold' },
+  },
 }
 
 require('treesitter-context').setup {
   max_lines = 3,
 }
 
-require('ts_context_commentstring').setup()
-
 -- Tree-sitter based folding
+-- disabled. Folding is managed by nvim-ufo
 -- vim.opt.foldmethod = 'expr'
 -- vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
