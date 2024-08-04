@@ -25,7 +25,7 @@ end
 cmp.setup {
   completion = {
     completeopt = 'menu,menuone,noinsert',
-    autocomplete = false,
+    -- autocomplete = false,
   },
   formatting = {
     format = lspkind.cmp_format {
@@ -57,59 +57,93 @@ cmp.setup {
     end,
   },
   mapping = {
-    ['<C-b>'] = cmp.mapping(function(_)
-      if cmp.visible() then
-        cmp.scroll_docs(-4)
-      else
-        complete_with_source('buffer')
-      end
-    end, { 'i', 'c', 's' }),
-    ['<C-f>'] = cmp.mapping(function(_)
-      if cmp.visible() then
-        cmp.scroll_docs(4)
-      else
-        complete_with_source('path')
-      end
-    end, { 'i', 'c', 's' }),
-    ['<C-n>'] = cmp.mapping(function(fallback)
+    -- ['<C-b>'] = cmp.mapping(function(_)
+    --   if cmp.visible() then
+    --     cmp.scroll_docs(-4)
+    --   else
+    --     complete_with_source('buffer')
+    --   end
+    -- end, { 'i', 'c', 's' }),
+    -- ['<C-f>'] = cmp.mapping(function(_)
+    --   if cmp.visible() then
+    --     cmp.scroll_docs(4)
+    --   else
+    --     complete_with_source('path')
+    --   end
+    -- end, { 'i', 'c', 's' }),
+    -- ['<C-n>'] = cmp.mapping(function(fallback)
+    --   if cmp.visible() then
+    --     cmp.select_next_item()
+    --     -- expand_or_jumpable(): Jump outside the snippet region
+    --     -- expand_or_locally_jumpable(): Only jump inside the snippet region
+    --   elseif require('luasnip').expand_or_locally_jumpable() then
+    --     require('luasnip').expand_or_jump()
+    --   else
+    --     fallback()
+    --   end
+    -- end, { 'i', 'c', 's' }),
+    -- ['<C-p>'] = cmp.mapping(function(fallback)
+    --   if cmp.visible() then
+    --     cmp.select_prev_item()
+    --   elseif require('luasnip').locally_jumpable(-1) then
+    --     require('luasnip').jump(-1)
+    --   else
+    --     fallback()
+    --   end
+    -- end, { 'i', 'c', 's' }),
+    -- -- toggle completion
+    -- ['<C-e>'] = cmp.mapping(function(_)
+    --   if cmp.visible() then
+    --     cmp.close()
+    --   else
+    --     cmp.complete()
+    --   end
+    -- end, { 'i', 'c', 's' }),
+    -- ['<C-y>'] = cmp.mapping(function(_)
+    --   local entry = cmp.get_selected_entry()
+    --   if not entry then
+    --     cmp.select_next_item { behavior = cmp.SelectBehavior.Select }
+    --   end
+    --   cmp.confirm {
+    --     select = true,
+    --   }
+    -- end, { 'i', 'c', 's' }),
+    -- -- ['<C-o>'] = complete_with_source_mapping('omni', { 'i', 'c' }),
+    -- ['<C-s>'] = complete_with_source_mapping('luasnip', { 'i', 's' }),
+
+   ['<CR>'] = cmp.mapping(function(fallback)
+        if cmp.visible() then
+            if luasnip.expandable() then
+                luasnip.expand()
+            else
+                cmp.confirm({
+                    select = true,
+                })
+            end
+        else
+            fallback()
+        end
+    end),
+
+    ["<Tab>"] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_next_item()
-        -- expand_or_jumpable(): Jump outside the snippet region
-        -- expand_or_locally_jumpable(): Only jump inside the snippet region
-      elseif require('luasnip').expand_or_locally_jumpable() then
-        require('luasnip').expand_or_jump()
+      elseif luasnip.locally_jumpable(1) then
+        luasnip.jump(1)
       else
         fallback()
       end
-    end, { 'i', 'c', 's' }),
-    ['<C-p>'] = cmp.mapping(function(fallback)
+    end, { "i", "s" }),
+
+    ["<S-Tab>"] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_prev_item()
-      elseif require('luasnip').locally_jumpable(-1) then
-        require('luasnip').jump(-1)
+      elseif luasnip.locally_jumpable(-1) then
+        luasnip.jump(-1)
       else
         fallback()
       end
-    end, { 'i', 'c', 's' }),
-    -- toggle completion
-    ['<C-e>'] = cmp.mapping(function(_)
-      if cmp.visible() then
-        cmp.close()
-      else
-        cmp.complete()
-      end
-    end, { 'i', 'c', 's' }),
-    ['<C-y>'] = cmp.mapping(function(_)
-      local entry = cmp.get_selected_entry()
-      if not entry then
-        cmp.select_next_item { behavior = cmp.SelectBehavior.Select }
-      end
-      cmp.confirm {
-        select = true,
-      }
-    end, { 'i', 'c', 's' }),
-    -- ['<C-o>'] = complete_with_source_mapping('omni', { 'i', 'c' }),
-    ['<C-s>'] = complete_with_source_mapping('luasnip', { 'i', 's' }),
+    end, { "i", "s" }),
   },
   sources = cmp.config.sources {
     -- The insertion order appears to influence the priority of the sources
