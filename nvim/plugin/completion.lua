@@ -99,14 +99,18 @@ cmp.setup {
         cmp.complete()
       end
     end, { 'i', 'c', 's' }),
-    ['<CR>'] = cmp.mapping(function(_)
-      local entry = cmp.get_selected_entry()
-      if not entry then
-        cmp.select_next_item { behavior = cmp.SelectBehavior.Select }
+    ['<CR>'] = cmp.mapping(function(fallback)
+      if cmp.visible() then
+        local entry = cmp.get_selected_entry()
+        if not entry then
+          cmp.select_next_item { behavior = cmp.SelectBehavior.Select }
+        end
+        cmp.confirm {
+          select = true,
+        }
+      else
+        fallback()
       end
-      cmp.confirm {
-        select = true,
-      }
     end, { 'i', 'c', 's' }),
     -- ['<C-o>'] = complete_with_source_mapping('omni', { 'i', 'c' }),
     ['<C-s>'] = complete_with_source_mapping('luasnip', { 'i', 's' }),
