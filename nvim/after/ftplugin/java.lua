@@ -1,3 +1,6 @@
+local files = require('mrcjk.files')
+files.treesitter_start()
+
 require('mrcjk.neotest')
 local lsp = require('mrcjk.lsp')
 local jdtls = require('jdtls')
@@ -8,6 +11,12 @@ local jdtls_bin = vim.fn.executable('jdtls') == 1 and 'jdtls'
 if not jdtls_bin then
   return
 end
+
+local bufnr = vim.api.nvim_get_current_buf()
+
+vim.keymap.set('n', '<leader>ot', function()
+  vim.cmd.Other('test')
+end, { noremap = true, silent = true, desc = '[o]ther: [t]est', buffer = bufnr })
 
 local on_jdtls_attach = function(_, buf)
   -- With `hotcodereplace = 'auto' the debug adapter will try to apply code changes
@@ -81,7 +90,8 @@ jdtls.start_or_attach {
   root_dir = workspace_dir,
   settings = settings,
   on_attach = on_jdtls_attach,
+  ---@param client vim.lsp.Client
   on_init = function(client, _)
-    client.notify('workspace/didChangeConfiguration', { settings = settings })
+    client:notify(vim.lsp.protocol.Methods.workspace_didChangeConfiguration, { settings = settings })
   end,
 }

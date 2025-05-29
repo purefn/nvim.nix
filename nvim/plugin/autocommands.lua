@@ -1,5 +1,6 @@
 local api = vim.api
 local keymap = vim.keymap
+local methods = vim.lsp.protocol.Methods
 
 local tempdirgroup = api.nvim_create_augroup('tempdir', { clear = true })
 -- Do not set undofile for files in /tmp
@@ -43,20 +44,12 @@ api.nvim_create_autocmd('TermOpen', {
   end,
 })
 
-api.nvim_create_autocmd('FileType', {
-  pattern = 'Neogit*',
-  group = nospell_group,
-  callback = function(ev)
-    if vim.bo[ev.buf].filetype ~= 'NeogitCommitMessage' then
-      vim.wo[0].spell = false
-    end
-  end,
-})
-
 local highlight_cur_n_group = api.nvim_create_augroup('highlight-current-n', { clear = true })
 api.nvim_create_autocmd('ColorScheme', {
   callback = function()
     local search = api.nvim_get_hl(0, { name = 'Search' })
+    ---@diagnostic disable-next-line: cast-type-mismatch
+    ---@cast search vim.api.keyset.highlight
     api.nvim_set_hl(0, 'CurSearch', { link = 'IncSearch' })
     api.nvim_set_hl(0, 'SearchCurrentN', search)
     return api.nvim_set_hl(0, 'Search', { link = 'SearchCurrentN' })
@@ -80,7 +73,7 @@ api.nvim_create_autocmd('CmdlineLeave', {
       vim.opt.hlsearch = true
       return nil
     end
-    return vim.defer_fn(_4_, 5)
+    return vim.defer_fn(_4_, 5) ~= nil
   end,
   group = highlight_cur_n_group,
 })
@@ -140,13 +133,13 @@ local function preview_location_callback(_, result)
 end
 
 local function peek_definition()
-  local params = vim.lsp.util.make_position_params()
-  return vim.lsp.buf_request(0, 'textDocument/definition', params, preview_location_callback)
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
+  return vim.lsp.buf_request(0, methods.textDocument_definition, params, preview_location_callback)
 end
 
 local function peek_type_definition()
-  local params = vim.lsp.util.make_position_params()
-  return vim.lsp.buf_request(0, 'textDocument/typeDefinition', params, preview_location_callback)
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
+  return vim.lsp.buf_request(0, methods.textDocument_typeDefinition, params, preview_location_callback)
 end
 
 local function document_functions()
@@ -239,7 +232,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
     if not client then
       return
     end
-    if client.server_capabilities.documentSymbolProvider then
+    if client:supports_method(methods.textDocument_documentSymbol) then
       require('nvim-navic').attach(client, bufnr)
     end
     vim.cmd.setlocal('signcolumn=yes')
@@ -259,11 +252,10 @@ vim.api.nvim_create_autocmd('LspAttach', {
     -- Mappings.
     keymap.set('n', 'gD', vim.lsp.buf.declaration, desc('lsp: go to [D]eclaration'))
     keymap.set('n', 'gd', vim.lsp.buf.definition, desc('lsp: go to [d]efinition'))
-    keymap.set('n', '<space>gt', vim.lsp.buf.type_definition, desc('lsp: go to [t]ype definition'))
-    -- keymap.set('n', 'K', vim.lsp.buf.hover, opts) -- overridden by nvim-ufo
-    keymap.set('n', '<space>pd', peek_definition, desc('lsp: [p]eek [d]efinition')) -- overridden by nvim-ufo
-    keymap.set('n', '<space>pt', peek_type_definition, desc('lsp: [p]eek [t]ype definition')) -- overridden by nvim-ufo
     keymap.set('n', 'gi', vim.lsp.buf.implementation, desc('lsp: go to [i]mplementation'))
+    keymap.set('n', '<space>gt', vim.lsp.buf.type_definition, desc('lsp: go to [t]ype definition'))
+    keymap.set('n', '<space>pd', peek_definition, desc('lsp: [p]eek [d]efinition'))
+    keymap.set('n', '<space>pt', peek_type_definition, desc('lsp: [p]eek [t]ype definition'))
     keymap.set('n', '<space>gi', go_to_first_import, desc('lsp: [g]o to fist [i]mport'))
     keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, desc('lsp: signature help'))
     keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, desc('lsp: [w]orkspace folder [a]dd'))
@@ -272,7 +264,13 @@ vim.api.nvim_create_autocmd('LspAttach', {
       -- TODO: Replace this with a Telescope extension?
       vim.print(vim.lsp.buf.list_workspace_folders())
     end, desc('lsp: [w]orkspace folders [l]'))
-    keymap.set('n', '<space>rn', vim.lsp.buf.rename, desc('lsp: [r]e[n]ame'))
+    keymap.set('n', '<space>rn', function()
+      -- vim.lsp.buf.rename()
+      require('live-rename').rename()
+    end, desc('lsp: [r]e[n]ame'))
+    keymap.set('n', '<space>ri', function()
+      require('live-rename').rename { text = '', insert = true }
+    end, desc('lsp: [r]ename ([i]nsert mode)'))
     keymap.set('n', '<space>wq', vim.lsp.buf.workspace_symbol, desc('lsp: [w]orkspace symbol [q]uery'))
     keymap.set('n', '<space>dd', vim.lsp.buf.document_symbol, desc('lsp: [dd]ocument symbol'))
     keymap.set('n', '<space>df', document_functions, desc('lsp: [d]ocument [f]unctions'))
@@ -296,10 +294,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
       vim.lsp.buf.format { async = true }
     end, desc('lsp: [f]ormat buffer'))
 
-    -- Autocomplete signature hints
-    require('lsp_signature').on_attach()
-
-    if client.server_capabilities.inlayHintProvider then
+    if client:supports_method(methods.textDocument_inlayHint) then
       keymap.set('n', '<space>h', function()
         local current_setting = vim.lsp.inlay_hint.is_enabled { bufnr = bufnr }
         vim.lsp.inlay_hint.enable(not current_setting, { bufnr = bufnr })
@@ -307,7 +302,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
     end
 
     local group = api.nvim_create_augroup(string.format('lsp-%s-%s', bufnr, client.id), {})
-    if client.server_capabilities.codeLensProvider then
+    if client:supports_method(methods.codeLens_resolve) then
       vim.api.nvim_create_autocmd({ 'InsertLeave', 'BufEnter', 'CursorHold' }, {
         group = group,
         callback = function()
@@ -317,6 +312,9 @@ vim.api.nvim_create_autocmd('LspAttach', {
       })
       vim.lsp.codelens.refresh { bufnr = bufnr }
     end
+    if client:supports_method(methods.textDocument_completion, bufnr) then
+      vim.lsp.completion.enable(true, client.id, bufnr, { autotrigger = false })
+    end
   end,
 })
 
@@ -325,5 +323,50 @@ api.nvim_create_autocmd('LspDetach', {
   callback = function(args)
     local group = api.nvim_create_augroup(string.format('lsp-%s-%s', args.buf, args.data.client_id), {})
     pcall(api.nvim_del_augroup_by_name, group)
+  end,
+})
+
+api.nvim_create_autocmd({ 'VimEnter', 'FocusGained', 'BufEnter' }, {
+  group = api.nvim_create_augroup('ReloadFileOnChange', {}),
+  command = 'checktime',
+})
+
+local function should_highlight_extra_whitespace()
+  local ignored_filetypes = {
+    'TelescopePrompt',
+    'help',
+    'dashboard',
+  }
+  if vim.bo.buftype == 'nofile' or vim.bo.buftype == 'terminal' then
+    return false
+  end
+  if vim.tbl_contains(ignored_filetypes, vim.bo.filetype) then
+    return false
+  end
+  if api.nvim_get_mode().mode == 'i' then
+    return false
+  end
+  local bufnr = api.nvim_get_current_buf()
+  require('editorconfig')
+  local editorconfig = vim.b[bufnr].editorconfig or {}
+  if editorconfig.trim_trailing_whitespace == 'true' then
+    return false
+  end
+  return true
+end
+
+api.nvim_create_autocmd({ 'UIEnter' }, {
+  group = api.nvim_create_augroup('HighlightExtraWhiteSpace', {}),
+  callback = function()
+    local extra_whitespace_hi = 'DiffDelete'
+    if not vim.fn.hlexists(extra_whitespace_hi) then
+      vim.notify_once(string.format('highlight %s does not exist', extra_whitespace_hi), vim.log.levels.ERROR)
+      return
+    end
+    if should_highlight_extra_whitespace() then
+      vim.cmd.match { extra_whitespace_hi, [[/\s\+$/]] }
+    else
+      vim.cmd.match()
+    end
   end,
 })

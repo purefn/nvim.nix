@@ -12,6 +12,7 @@ with final.lib; let
     withNodeJs ? false,
     viAlias ? true,
     vimAlias ? true,
+    initLuaPre ? "",
   }: let
     defaultPlugin = {
       plugin = null;
@@ -20,7 +21,12 @@ with final.lib; let
       runtime = {};
     };
 
-    externalPackages = extraPackages ++ [final.sqlite];
+    externalPackages =
+      extraPackages
+      ++ (with final; [
+        sqlite
+        nodePackages.vscode-json-languageserver
+      ]);
 
     normalizedPlugins = map (x:
       defaultPlugin
@@ -55,6 +61,12 @@ with final.lib; let
     };
 
     initLua =
+      initLuaPre
+      + ""
+      +
+      /*
+      lua
+      */
       ''
         vim.loader.enable()
         vim.opt.rtp:prepend('${../lib}')
@@ -63,6 +75,9 @@ with final.lib; let
       + (builtins.readFile ../nvim/init.lua)
       + ""
       + optionalString (devPlugins != []) (
+        /*
+        lua
+        */
         ''
           local dev_pack_path = vim.fn.stdpath('data') .. '/site/pack/dev'
           local dev_plugins_dir = dev_pack_path .. '/opt'
@@ -70,34 +85,41 @@ with final.lib; let
         ''
         + strings.concatMapStringsSep
         "\n"
-        (plugin: ''
-          dev_plugin_path = dev_plugins_dir .. '/${plugin.name}'
-          if vim.fn.empty(vim.fn.glob(dev_plugin_path)) > 0 then
-            vim.notify('Bootstrapping dev plugin ${plugin.name} ...', vim.log.levels.INFO)
-            vim.cmd('!${final.git}/bin/git clone ${plugin.url} ' .. dev_plugin_path)
-          end
-          vim.cmd('packadd! ${plugin.name}')
-        '')
+        (plugin:
+          /*
+          lua
+          */
+          ''
+            dev_plugin_path = dev_plugins_dir .. '/${plugin.name}'
+            if vim.fn.empty(vim.fn.glob(dev_plugin_path)) > 0 then
+              vim.notify('Bootstrapping dev plugin ${plugin.name} ...', vim.log.levels.INFO)
+              vim.cmd('!${final.git}/bin/git clone ${plugin.url} ' .. dev_plugin_path)
+            end
+            vim.cmd('packadd! ${plugin.name}')
+          '')
         devPlugins
       )
-      + ''
+      +
+      /*
+      lua
+      */
+      ''
         vim.opt.rtp:append('${nvimConfig}/nvim')
         vim.opt.rtp:append('${nvimConfig}/after')
       '';
 
-    extraMakeWrapperArgs = 
-      let 
-        libsqlite3 = "${final.sqlite.out}/lib/libsqlite3.${if final.stdenv.isDarwin then "dylib" else "so"}";
-      in builtins.concatStringsSep " " (
-        (optional (appName != "nvim" && appName != null && appName != "")
-          ''--set NVIM_APPNAME "${appName}"'')
-        ++ (optional (externalPackages != [])
-          ''--prefix PATH : "${makeBinPath externalPackages}"'')
-        ++ [
-          ''--set LIBSQLITE_CLIB_PATH "${libsqlite3}"''
-          ''--set LIBSQLITE "${libsqlite3}"''
-        ]
-      );
+    libExt = final.stdenv.hostPlatform.extensions.sharedLibrary;
+
+    extraMakeWrapperArgs = builtins.concatStringsSep " " (
+      (optional (appName != "nvim" && appName != null && appName != "")
+        ''--set NVIM_APPNAME "${appName}"'')
+      ++ (optional (externalPackages != [])
+        ''--prefix PATH : "${makeBinPath externalPackages}"'')
+      ++ [
+        ''--set LIBSQLITE_CLIB_PATH "${final.sqlite.out}/lib/libsqlite3${libExt}"''
+        ''--set LIBSQLITE "${final.sqlite.out}/lib/libsqlite3${libExt}"''
+      ]
+    );
 
     extraMakeWrapperLuaCArgs = optionalString (resolvedExtraLuaPackages != []) ''
       --suffix LUA_CPATH ";" "${
@@ -112,9 +134,31 @@ with final.lib; let
           concatMapStringsSep ";" final.luaPackages.getLuaPath
           resolvedExtraLuaPackages
         }"'';
+
+    excludeFiles = [
+      "indent.vim"
+      "menu.vim"
+      "mswin.vim"
+      "plugin/matchit.vim"
+      "plugin/matchparen.vim"
+      "plugin/rplugin.vim"
+      "plugin/shada.vim"
+      "plugin/tohtml.vim"
+      "plugin/tutor.vim"
+      "plugin/gzip.vim"
+      "plugin/tarPlugin.vim"
+      "plugin/zipPlugin.vim"
+    ];
+    postInstallCommands = map (target: "rm -f $out/share/nvim/runtime/${target}") excludeFiles;
+
+    nvim-unwrapped = prev.neovim.overrideAttrs (oa: {
+      postInstall = ''
+        ${oa.postInstall or ""}
+        ${concatStringsSep "\n" postInstallCommands}
+      '';
+    });
   in
-    # final.wrapNeovimUnstable inputs.packages.${prev.system}.neovim (neovimConfig
-    final.wrapNeovimUnstable final.neovim-nightly (neovimConfig
+    final.wrapNeovimUnstable nvim-unwrapped (neovimConfig
       // {
         luaRcContent = initLua;
         wrapperArgs =
@@ -138,107 +182,115 @@ with final.lib; let
       plenary
       sqlite
       nvim-web-devicons
-      diffview
       nvim-ts-context-commentstring
       treesitter-textobjects
       treesitter-context
-      wildfire-nvim
       rainbow-delimiters-nvim
       (opt vim-matchup)
-      iswap-nvim
-      nvim-treesitter
       vim-wordmotion
       nvim-highlight-colors
       # (withConfig leap "require('leap').set_default_keymaps()")
       flash-nvim
       eyeliner-nvim
-      neogit
       gitlinker
       repeat
-      unimpaired
       surround
       substitute
       persistence
       nvim-lastplace
       comment
-      material-theme
       crates-nvim
       (opt neotest)
       (opt neotest-java)
       neotest-busted
       nio # TODO: Remove when rocks-dev is ready
-      nvim-dap
-      nvim-dap-ui
       jdtls
-      nvim-metals
-      lsp-status
-      lsp_signature
+      live-rename-nvim
       fidget
-      illuminate
+      (opt illuminate)
       schemastore-nvim
-      lspkind-nvim
       actions-preview-nvim
       nvim-lint
       telescope_hoogle
       telescope-smart-history
       telescope-zf-native
-      telescope
+      (opt telescope)
       todo-comments
-      fzf-lua
       nvim-navic
       lualine
-      toggleterm
-      harpoon
+      (opt harpoon)
       gitsigns
-      (opt nvim-bqf)
-      formatter
+      nvim-bqf
+      quicker-nvim
       yanky
-      promise-async
-      nvim-ufo
       statuscol
       nvim-unception
-      tmux-nvim
       term-edit-nvim
       oil-nvim
-      oil-git-status-nvim
       other-nvim
       which-key-nvim
     ]
-    ++ (with final.nvimPlugins; [
-      # nvim-cmp and plugins
-      cmp-buffer
-      cmp-tmux
-      cmp-path
-      cmp-cmdline
-      cmp-cmdline-history
-      cmp-nvim-lua
-      cmp-nvim-lsp
-      cmp-nvim-lsp-document-symbol
-      cmp-nvim-lsp-signature-help
-      cmp-luasnip
-      cmp-luasnip-choice
-      cmp-rg
-      nvim-cmp
-    ])
     ++ (with prev.vimPlugins; [
       # catppuccin-nvim
-      (opt luasnip)
-      markdown-preview-nvim
-      vim-fugitive
       telescope-fzy-native-nvim
-      # neorg
-      dial-nvim
+      (opt dial-nvim)
       vim-scriptease
+      catppuccin-nvim
+      (opt (nvim-treesitter.withPlugins (ps:
+        with ps; [
+          bash
+          c
+          cpp
+          css
+          dhall
+          diff
+          dockerfile
+          editorconfig
+          gitcommit
+          graphql
+          haskell
+          haskell_persistent
+          html
+          java
+          jq
+          json
+          json5
+          latex
+          lua
+          luadoc
+          make
+          markdown
+          markdown_inline
+          mermaid
+          nix
+          nu
+          proto
+          python
+          regex
+          rust
+          scala
+          scheme
+          sql
+          terraform
+          thrift
+          toml
+          typst
+          vim
+          vimdoc
+          yaml
+        ])))
     ]);
 
   all-plugins =
     base-plugins
     ++ (with final; [
-      haskell-tools-nvim-dev
-      haskell-snippets-nvim
-      neotest-haskell-dev
-      telescope-manix
-      rustaceanvim
+      inputs.haskell-tools.packages.${system}.default
+      inputs.neotest-haskell.packages.${system}.default
+      # FIXME:
+      # inputs.telescope-manix.packages.${system}.default
+      final.vimPlugins.telescope-manix
+      inputs.rustaceanvim.packages.${system}.default
+      inputs.lz-n.packages.${system}.default
     ]);
 
   extraPackages = with final; [
@@ -246,10 +298,12 @@ with final.lib; let
     nodePackages.vim-language-server
     nodePackages.yaml-language-server
     nodePackages.dockerfile-language-server-nodejs
-    nodePackages.vscode-json-languageserver-bin
+    # nodePackages.vscode-langservers-extracted
     nodePackages.bash-language-server
     taplo # toml toolkit including a language server
     sqls
+    gitu
+    jujutsu
   ];
 
   nvim-dev = mkNeovim {
@@ -275,6 +329,10 @@ with final.lib; let
         name = "rustaceanvim";
         url = "git@github.com:mrcjkb/rustaceanvim.git";
       }
+      {
+        name = "lz.n";
+        url = "git@github.com:nvim-neorocks/lz.n.git";
+      }
     ];
     inherit extraPackages;
   };
@@ -284,15 +342,31 @@ with final.lib; let
     inherit extraPackages;
   };
 
+  nvim-profile = mkNeovim {
+    plugins =
+      all-plugins
+      ++ (with final.nvimPlugins; [
+        snacks-nvim
+      ]);
+    inherit extraPackages;
+    initLuaPre =
+      /*
+      lua
+      */
+      ''
+        require('snacks.profiler').startup {}
+      '';
+  };
+
   luarc-json = final.mk-luarc-json {
     plugins = all-plugins;
-    nvim = final.neovim-nightly;
-    neodev-types = "nightly";
+    nvim = final.neovim;
   };
 in {
   inherit
     nvim-dev
     nvim-pkg
+    nvim-profile
     luarc-json
     ;
 }

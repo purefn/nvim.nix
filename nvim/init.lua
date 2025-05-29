@@ -1,5 +1,5 @@
 local cmd = vim.cmd
-local opt = vim.o
+local opt = vim.opt
 local keymap = vim.keymap
 local g = vim.g
 
@@ -19,7 +19,7 @@ opt.incsearch = true
 opt.hlsearch = true
 
 opt.spell = true
-opt.spelllang = 'en'
+opt.spelllang = 'en,de_ch'
 
 -- On pressing tab, insert spaces
 opt.expandtab = true
@@ -29,7 +29,7 @@ opt.softtabstop = 2
 -- When indenting with '>', use 2 spaces width
 opt.shiftwidth = 2
 opt.foldenable = true
--- opt.foldlevelstart = 10 -- set in plugin.ufo
+opt.foldlevelstart = 10
 -- opt.foldmethod = 'indent' -- fold based on indent level
 opt.history = 2000
 -- Increment numbers in decimal and hexadecimal formats
@@ -49,41 +49,55 @@ opt.cmdheight = 0
 
 opt.fillchars = [[eob: ,fold: ,foldopen:,foldsep: ,foldclose:]]
 
+opt.completeopt = 'menu,menuone,noinsert,fuzzy,popup,noselect'
+
 g.markdown_syntax_conceal = 0
 
 -- See https://github.com/hrsh7th/nvim-compe/issues/286#issuecomment-805140394
 g.omni_sql_default_compl_type = 'syntax'
 
 -- Set default shell
-opt.shell = 'bash'
+if vim.fn.executable('nu') == 1 then
+  opt.shell = 'nu'
+elseif vim.fn.executable('zsh') == 1 then
+  opt.shell = 'zsh'
+end
 
 opt.timeout = true
 opt.timeoutlen = 300
 
-local function prefix_diagnostic(prefix, diagnostic)
-  return string.format(prefix .. ' %s', diagnostic.message)
+opt.tags:append { '.tags' }
+
+local function format_diagnostic(prefix, diagnostic)
+  local formatted_message = diagnostic
+    .message
+    -- Replace any sequence of whitespace characters (including newlines) with a single space
+    :gsub('%s+', ' ')
+  return string.format(prefix .. ' %s', formatted_message)
 end
 
-vim.diagnostic.config {
-  virtual_text = {
-    prefix = '',
-    format = function(diagnostic)
-      local severity = diagnostic.severity
-      if severity == vim.diagnostic.severity.ERROR then
-        return prefix_diagnostic('󰅚', diagnostic)
-      end
-      if severity == vim.diagnostic.severity.WARN then
-        return prefix_diagnostic('⚠', diagnostic)
-      end
-      if severity == vim.diagnostic.severity.INFO then
-        return prefix_diagnostic('ⓘ', diagnostic)
-      end
-      if severity == vim.diagnostic.severity.HINT then
-        return prefix_diagnostic('󰌶', diagnostic)
-      end
-      return prefix_diagnostic('■', diagnostic)
-    end,
-  },
+local virtual_text_config = {
+  prefix = '',
+  format = function(diagnostic)
+    local severity = diagnostic.severity
+    if severity == vim.diagnostic.severity.ERROR then
+      return format_diagnostic('󰅚', diagnostic)
+    end
+    if severity == vim.diagnostic.severity.WARN then
+      return format_diagnostic('⚠', diagnostic)
+    end
+    if severity == vim.diagnostic.severity.INFO then
+      return format_diagnostic('ⓘ', diagnostic)
+    end
+    if severity == vim.diagnostic.severity.HINT then
+      return format_diagnostic('󰌶', diagnostic)
+    end
+    return format_diagnostic('■', diagnostic)
+  end,
+}
+
+local diagnostic_config = {
+  virtual_text = virtual_text_config,
   signs = {
     text = {
       [vim.diagnostic.severity.ERROR] = '󰅚',
@@ -104,6 +118,46 @@ vim.diagnostic.config {
     prefix = '',
   },
 }
+
+vim.diagnostic.config(diagnostic_config)
+
+---@param direction 'forward' | 'backward'
+local function cycle_diagnostic_modes(direction)
+  local current_config = vim.diagnostic.config() or diagnostic_config
+  local modes = {
+    { virtual_text = virtual_text_config, virtual_lines = false },
+    { virtual_text = false, virtual_lines = true },
+    { virtual_text = false, virtual_lines = false },
+  }
+
+  local current_mode_index
+  for i, mode in ipairs(modes) do
+    if
+      (
+        (type(current_config.virtual_text) == 'table' and mode.virtual_text == virtual_text_config)
+        or (current_config.virtual_text == mode.virtual_text)
+      ) and (current_config.virtual_lines == mode.virtual_lines)
+    then
+      current_mode_index = i
+      break
+    end
+  end
+  local next_mode_index
+  if direction == 'forward' then
+    next_mode_index = (current_mode_index % #modes) + 1
+  else
+    next_mode_index = (current_mode_index - 2 + #modes) % #modes + 1
+  end
+  vim.diagnostic.config(vim.tbl_extend('force', current_config, modes[next_mode_index]))
+end
+
+vim.keymap.set('n', '<space>d]', function()
+  cycle_diagnostic_modes('forward')
+end, { noremap = true, silent = true })
+
+vim.keymap.set('n', '<space>d[', function()
+  cycle_diagnostic_modes('backward')
+end, { noremap = true, silent = true })
 
 vim.api.nvim_create_autocmd('BufEnter', {
   group = vim.api.nvim_create_augroup('DisableNewLineAutoCommentString', {}),
@@ -143,17 +197,19 @@ g.loaded_netrwPlugin = 1
 g.loaded_netrwSettings = 1
 g.loaded_netrwFileHandlers = 1
 
+vim.cmd([[
+  set sessionoptions-=buffers
+]])
+
 -- Plugin settings
 local keymap_opts = { noremap = true, silent = true }
-local telescope = require('telescope')
 
----@return HTOpts
+---@return haskell-tools.Opts
 g.haskell_tools = function()
-  ---@type HTOpts
+  ---@type haskell-tools.Opts
   local ht_opts = {
     tools = {
       repl = {
-        handler = 'toggleterm',
         auto_focus = false,
       },
       codeLens = {
@@ -171,25 +227,32 @@ g.haskell_tools = function()
           return vim.tbl_extend('keep', keymap_opts, { buffer = bufnr, desc = description })
         end
         keymap.set('n', 'gh', ht.hoogle.hoogle_signature, desc('haskell: [h]oogle signature search'))
-        keymap.set('n', '<space>tg', telescope.extensions.ht.package_grep, desc('haskell: [t]elescope package [g]rep'))
-        keymap.set(
-          'n',
-          '<space>th',
-          telescope.extensions.ht.package_hsgrep,
-          desc('haskell: [t]elescope package grep [h]askell files')
-        )
-        keymap.set(
-          'n',
-          '<space>tf',
-          telescope.extensions.ht.package_files,
-          desc('haskell: [t]elescope package [f]iles')
-        )
+        keymap.set('n', '<space>tg', function()
+          vim.cmd.Telescope { 'ht', 'package_grep' }
+        end, desc('haskell: [t]elescope package [g]rep'))
+        keymap.set('n', '<space>th', function()
+          vim.cmd.Telescope { 'ht', 'package_hsgrep' }
+        end, desc('haskell: [t]elescope package grep [h]askell files'))
+        keymap.set('n', '<space>tf', function()
+          vim.cmd.Telescope { 'ht', 'package_files' }
+        end, desc('haskell: [t]elescope package [f]iles'))
         keymap.set('n', '<space>ea', ht.lsp.buf_eval_all, desc('haskell: [e]valuate [a]ll'))
       end,
       default_settings = {
         haskell = {
-          formattingProvider = 'stylish-haskell',
-          maxCompletions = 10,
+          checkProject = false, -- PERF: don't check the entire project on initial load
+          formattingProvider = 'fourmolu',
+          maxCompletions = 30,
+          plugin = {
+            semanticTokens = {
+              globalOn = true,
+            },
+            rename = {
+              config = {
+                diff = true, -- (experimental) rename across modules
+              },
+            },
+          },
         },
       },
     },
@@ -197,31 +260,19 @@ g.haskell_tools = function()
   return ht_opts
 end
 
----@return RustaceanOpts
+---@return rustaceanvim.Opts
 g.rustaceanvim = function()
-  ---@type RustaceanOpts
+  ---@type rustaceanvim.Opts
   local rustacean_opts = {
-    tools = {
-      executor = 'toggleterm',
-    },
     server = {
-      on_attach = function(...)
-        require('mrcjk.lsp').on_dap_attach(...)
-      end,
       default_settings = {
         ['rust-analyzer'] = {
           cargo = {
-            allFeatures = true,
             loadOutDirsFromCheck = true,
             runBuildScripts = true,
           },
           procMacro = {
             enable = true,
-            ignored = {
-              ['async-trait'] = { 'async_trait' },
-              ['napi-derive'] = { 'napi' },
-              ['async-recursion'] = { 'async_recursion' },
-            },
           },
           inlayHints = {
             lifetimeElisionHints = {

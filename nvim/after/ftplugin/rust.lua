@@ -1,3 +1,6 @@
+local files = require('mrcjk.files')
+files.treesitter_start()
+
 require('mrcjk.neotest')
 local codelens = require('mrcjk.lsp.codelens')
 
@@ -36,12 +39,18 @@ end, desc('[r]ust: move item down [j]'))
 vim.keymap.set('v', 'K', function()
   vim.cmd.RustLsp { 'hover', 'range' }
 end, desc('rust: hover range'))
+vim.keymap.set('n', 'K', function()
+  vim.cmd.RustLsp { 'hover', 'actions' }
+end, desc('rust: hover range'))
 vim.keymap.set('n', '<space>re', function()
   vim.cmd.RustLsp('explainError')
 end, desc('[r]ust: [e]xplain error'))
 vim.keymap.set('n', '<space>rd', function()
   vim.cmd.RustLsp('renderDiagnostic')
 end, desc('rust: [r]ender [d]iagnostic'))
+vim.keymap.set('n', '<space>gd', function()
+  vim.cmd.RustLsp('relatedDiagnostics')
+end, desc('rust: [g]o to related [d]iagnostics'))
 vim.keymap.set('n', '<space>gc', function()
   vim.cmd.RustLsp('openCargo')
 end, desc('rust: [g]o to [c]argo.toml'))
@@ -65,6 +74,52 @@ end
 vim.keymap.set('n', '[t', function()
   codelens.goto_prev { predicate = testable_predicate }
 end, desc('rust: previous [t]estable'))
+
 vim.keymap.set('n', ']t', function()
   codelens.goto_next { predicate = testable_predicate }
 end, desc('rust: next [t]estable'))
+
+vim.keymap.set(
+  'n',
+  '<space>a',
+  '<Plug>RustHoverAction',
+  { noremap = true, silent = true, desc = 'rust: hover [a]ction' }
+)
+
+-- vim.api.nvim_create_autocmd('User', {
+--   pattern = 'rustaceanvim.code_action',
+--   callback = function(ctx)
+--     vim.keymap.set(
+--       'n',
+--       '<C-y>',
+--       '<Plug>rustaceanvim.code_action.confirm',
+--       { noremap = true, silent = true, desc = 'confirm rust code action', buffer = ctx.data.buf }
+--     )
+--
+--     vim.keymap.set(
+--       'n',
+--       '<CR>',
+--       '<Plug>rustaceanvim.code_action.confirm',
+--       { noremap = true, silent = true, desc = 'confirm rust code action', buffer = ctx.data.buf }
+--     )
+--
+--     vim.keymap.set(
+--       'n',
+--       'l',
+--       '<Plug>rustaceanvim.code_action.confirm',
+--       { noremap = true, silent = true, desc = 'confirm rust code action', buffer = ctx.data.buf }
+--     )
+--     vim.keymap.set(
+--       'n',
+--       'q',
+--       '<Plug>rustaceanvim.code_action.quit',
+--       { noremap = true, silent = true, desc = 'confirm rust code action', buffer = ctx.data.buf }
+--     )
+--     vim.keymap.set(
+--       'n',
+--       'h',
+--       '<Plug>rustaceanvim.code_action.quit',
+--       { noremap = true, silent = true, desc = 'confirm rust code action', buffer = ctx.data.buf }
+--     )
+--   end,
+-- })

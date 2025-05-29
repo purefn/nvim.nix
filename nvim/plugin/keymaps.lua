@@ -1,5 +1,3 @@
-local M = {}
-
 local api = vim.api
 local fn = vim.fn
 local keymap = vim.keymap
@@ -21,34 +19,6 @@ keymap.set('n', '[b', vim.cmd.bprevious, { silent = true, desc = 'previous [b]uf
 keymap.set('n', ']b', vim.cmd.bnext, { silent = true, desc = 'next [b]uffer' })
 keymap.set('n', '[B', vim.cmd.bfirst, { silent = true, desc = 'first [B]uffer' })
 keymap.set('n', ']B', vim.cmd.blast, { silent = true, desc = 'last [B]uffer' })
-
--- Undo break points in insert mode
--- inoremap(',', ',<c-g>u')
--- inoremap( '.', '.<c-g>u')
--- inoremap('!', '!<c-g>u')
--- inoremap('?', '?<c-g>u')
-
--- keymap.set('v', 'J', ":m '>+1<CR>gv=gv", { desc = 'move selection up' })
--- keymap.set('v', 'K', ":m '>-2<CR>gv=gv", { desc = 'move selection down' })
-
--- Toggle the quickfix list (only opens if it is populated)
-local function toggle_qf_list()
-  local qf_exists = false
-  for _, win in pairs(fn.getwininfo() or {}) do
-    if win['quickfix'] == 1 then
-      qf_exists = true
-    end
-  end
-  if qf_exists == true then
-    vim.cmd.cclose()
-    return
-  end
-  if not vim.tbl_isempty(vim.fn.getqflist()) then
-    vim.cmd.copen()
-  end
-end
-
-keymap.set('n', '<C-c>', toggle_qf_list, { desc = 'toggle quickfix list' })
 
 local function try_fallback_notify(opts)
   local success, _ = pcall(opts.try)
@@ -151,26 +121,38 @@ keymap.set('n', '<space>do', function()
   local _, winid = diagnostic.open_float(nil, { scope = 'line' })
   vim.api.nvim_win_set_config(winid or 0, { focusable = true })
 end, { noremap = true, silent = true, desc = '[d]iagnostics [o]pen floating' })
-keymap.set('n', '[d', diagnostic.goto_prev, { noremap = true, silent = true, desc = 'previous [d]iagnostic' })
-keymap.set('n', ']d', diagnostic.goto_next, { noremap = true, silent = true, desc = 'next [d]iagnostic' })
+keymap.set('n', '[d', function()
+  diagnostic.jump { count = -1, float = true }
+end, { noremap = true, silent = true, desc = 'previous [d]iagnostic' })
+keymap.set('n', ']d', function()
+  diagnostic.jump { count = 1, float = true }
+end, { noremap = true, silent = true, desc = 'next [d]iagnostic' })
 keymap.set('n', '[e', function()
-  diagnostic.goto_prev {
+  diagnostic.jump {
     severity = severity.ERROR,
+    count = -1,
+    float = true,
   }
 end, { noremap = true, silent = true, desc = 'previous [e]rror' })
 keymap.set('n', ']e', function()
-  diagnostic.goto_next {
+  diagnostic.jump {
     severity = severity.ERROR,
+    count = 1,
+    float = true,
   }
 end, { noremap = true, silent = true, desc = 'next [e]rror' })
 keymap.set('n', '[w', function()
-  diagnostic.goto_prev {
+  diagnostic.jump {
     severity = severity.WARN,
+    count = -1,
+    float = true,
   }
 end, { noremap = true, silent = true, desc = 'previous [w]arning' })
 keymap.set('n', ']w', function()
-  diagnostic.goto_next {
+  diagnostic.jump {
     severity = severity.WARN,
+    count = 1,
+    float = true,
   }
 end, { noremap = true, silent = true, desc = 'next [w]arning' })
 keymap.set('n', '<space>dl', function()
@@ -192,6 +174,13 @@ keymap.set('n', '<space>ch', function()
   diagnostic.setqflist { open = false, severity = severity.HINT }
 end, { noremap = true, silent = true, desc = '[c] [h]int diagnostics to quickfix list' })
 
+local function buf_toggle_diagnostics()
+  local filter = { bufnr = api.nvim_get_current_buf() }
+  diagnostic.enable(not diagnostic.is_enabled(filter), filter)
+end
+
+keymap.set('n', '<space>dt', buf_toggle_diagnostics)
+
 local function toggle_spell_check()
   ---@diagnostic disable-next-line: param-type-mismatch vim.opt.spell = not (vim.opt.spell:get())
 end
@@ -202,15 +191,25 @@ keymap.set('n', '<C-d>', '<C-d>zz', { desc = 'move down half-page and center' })
 keymap.set('n', '<C-u>', '<C-u>zz', { desc = 'move up half-page and center' })
 keymap.set('n', '<C-f>', '<C-f>zz', { desc = 'move down full-page and center' })
 keymap.set('n', '<C-b>', '<C-b>zz', { desc = 'move up full-page and center' })
+keymap.set('n', '<C-}>', '<C-}>zz', { desc = 'move up full-page and center' })
 
--- plugin keymaps
-
-keymap.set('n', '<leader>fg', function()
-  vim.cmd.FzfLua('grep')
-end, { desc = '[f]zfLua [g]rep' })
-
-keymap.set('n', '<leader>ff', function()
-  vim.cmd.FzfLua()
-end, { desc = '[f]z[f]Lua' })
-
-return M
+-- Terminal
+keymap.set('n', '<M-t>', function()
+  local term_bufnr = vim.iter(vim.api.nvim_list_bufs()):find(function(bufnr)
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    return vim.startswith(name, 'term://')
+  end)
+  if term_bufnr then
+    vim.api.nvim_set_current_buf(term_bufnr)
+  else
+    vim.cmd.terminal()
+  end
+end, { silent = true, noremap = true, desc = 'terminal' })
+keymap.set('n', '<M-v>', function()
+  vim.cmd.vsplit()
+  vim.cmd.terminal()
+end, { silent = true, noremap = true, desc = 'terminal [v]ertical split' })
+keymap.set('n', '<M-h>', function()
+  vim.cmd.split()
+  vim.cmd.terminal()
+end, { silent = true, noremap = true, desc = 'terminal [h]orizontal split' })

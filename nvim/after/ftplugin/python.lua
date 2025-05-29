@@ -1,3 +1,6 @@
+local files = require('mrcjk.files')
+files.treesitter_start()
+
 local lsp = require('mrcjk.lsp')
 
 local pylsp_cmd = 'pylsp'
@@ -9,7 +12,6 @@ end
 local config = {
   cmd = { pylsp_cmd },
   root_dir = vim.fs.dirname(vim.fs.find({ '.git', 'setup.py', 'setup.cfg', 'pyproject.toml' }, { upward = true })[1]),
-  on_attach = lsp.on_dap_attach,
   capabilities = lsp.capabilities,
   settings = {
     pylsp = {

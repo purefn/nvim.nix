@@ -7,21 +7,22 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    neovim-nightly.url = "github:nix-community/neovim-nightly-overlay";
     neorocks = {
       url = "github:nvim-neorocks/neorocks";
     };
     spell-de-dictionary = {
-      url = "http://ftp.vim.org/vim/runtime/spell/de.utf-8.spl";
+      url = "https://www.mirrorservice.org/pub/vim/runtime/spell/de.utf-8.spl";
       flake = false;
     };
     spell-de-suggestions = {
-      url = "http://ftp.vim.org/vim/runtime/spell/de.utf-8.sug";
+      url = "https://www.mirrorservice.org/pub/vim/runtime/spell/de.utf-8.sug";
       flake = false;
     };
     gen-luarc.url = "github:mrcjkb/nix-gen-luarc-json";
-    pre-commit-hooks = {
-      url = "github:cachix/pre-commit-hooks.nix";
+    git-hooks = {
+      url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-utils.url = "github:numtide/flake-utils";
@@ -43,6 +44,10 @@
     rustaceanvim = {
       url = "github:mrcjkb/rustaceanvim";
     };
+    lz-n = {
+      url = "github:nvim-neorocks/lz.n";
+      # url = "/home/mrcjk/git/github/mrcjkb/lz.n";
+    };
     crates-nvim = {
       url = "github:saecki/crates.nvim";
       flake = false;
@@ -57,10 +62,6 @@
     };
     nvim-web-devicons = {
       url = "github:nvim-tree/nvim-web-devicons";
-      flake = false;
-    };
-    diffview = {
-      url = "github:sindrets/diffview.nvim";
       flake = false;
     };
     vim-wordmotion = {
@@ -78,10 +79,6 @@
     };
     eyeliner-nvim = {
       url = "github:jinh0/eyeliner.nvim";
-      flake = false;
-    };
-    neogit = {
-      url = "github:NeogitOrg/neogit";
       flake = false;
     };
     gitlinker = {
@@ -114,12 +111,6 @@
       url = "github:numToStr/Comment.nvim";
       flake = false;
     };
-    material-theme = {
-      url = "github:marko-cerovac/material.nvim";
-      # url = "github:mrcjkb/material.nvim.fork/tree-sitter-highlight-groups";
-      # url = "/home/mrcjk/git/github/forks/nvim/material.nvim.fork/";
-      flake = false;
-    };
     neotest = {
       url = "github:nvim-neotest/neotest";
       # url = "github:mrcjkb/neotest/watcher";
@@ -147,24 +138,8 @@
       url = "github:mfussenegger/nvim-jdtls";
       flake = false;
     };
-    nvim-metals = {
-      url = "github:scalameta/nvim-metals";
-      flake = false;
-    };
-    nvim-dap = {
-      url = "github:mfussenegger/nvim-dap";
-      flake = false;
-    };
-    nvim-dap-ui = {
-      url = "github:rcarriga/nvim-dap-ui";
-      flake = false;
-    };
-    lsp-status = {
-      url = "github:nvim-lua/lsp-status.nvim";
-      flake = false;
-    };
-    lsp_signature = {
-      url = "github:ray-x/lsp_signature.nvim";
+    live-rename-nvim = {
+      url = "github:saecki/live-rename.nvim";
       flake = false;
     };
     fidget = {
@@ -173,63 +148,6 @@
     };
     illuminate = {
       url = "github:RRethy/vim-illuminate";
-      flake = false;
-    };
-    nvim-cmp = {
-      url = "github:hrsh7th/nvim-cmp";
-      flake = false;
-    };
-    cmp-buffer = {
-      url = "github:hrsh7th/cmp-buffer";
-      flake = false;
-    };
-    cmp-tmux = {
-      url = "github:andersevenrud/cmp-tmux";
-      flake = false;
-    };
-    cmp-path = {
-      url = "github:hrsh7th/cmp-path";
-      flake = false;
-    };
-    cmp-cmdline = {
-      url = "github:hrsh7th/cmp-cmdline";
-      flake = false;
-    };
-    cmp-cmdline-history = {
-      url = "github:dmitmel/cmp-cmdline-history";
-      flake = false;
-    };
-    cmp-nvim-lua = {
-      url = "github:hrsh7th/cmp-nvim-lua";
-      flake = false;
-    };
-    cmp-nvim-lsp = {
-      url = "github:hrsh7th/cmp-nvim-lsp";
-      flake = false;
-    };
-    cmp-nvim-lsp-document-symbol = {
-      url = "github:hrsh7th/cmp-nvim-lsp-document-symbol";
-      flake = false;
-    };
-    cmp-nvim-lsp-signature-help = {
-      url = "github:hrsh7th/cmp-nvim-lsp-signature-help";
-      flake = false;
-    };
-    cmp-luasnip = {
-      url = "github:saadparwaiz1/cmp_luasnip";
-      flake = false;
-    };
-    cmp-luasnip-choice = {
-      url = "github:L3MON4D3/cmp-luasnip-choice";
-      flake = false;
-    };
-    cmp-rg = {
-      url = "github:lukas-reineke/cmp-rg";
-      flake = false;
-    };
-    lspkind-nvim = {
-      # vscode-style completion pictograms
-      url = "github:onsails/lspkind-nvim";
       flake = false;
     };
     actions-preview-nvim = {
@@ -242,7 +160,7 @@
       flake = false;
     };
     treesitter-textobjects = {
-      url = "github:nvim-treesitter/nvim-treesitter-textobjects";
+      url = "github:nvim-treesitter/nvim-treesitter-textobjects/main";
       flake = false;
     };
     treesitter-context = {
@@ -250,13 +168,7 @@
       flake = false;
     };
     nvim-ts-context-commentstring = {
-      # url = "github:JoosepAlviste/nvim-ts-context-commentstring";
-      url = "github:mrcjkb/nvim-ts-context-commentstring/haskell";
-      # url = "/home/mrcjk/git/github/forks/nvim/nvim-ts-context-commentstring/";
-      flake = false;
-    };
-    wildfire-nvim = {
-      url = "github:sustech-data/wildfire.nvim";
+      url = "github:JoosepAlviste/nvim-ts-context-commentstring";
       flake = false;
     };
     rainbow-delimiters-nvim = {
@@ -266,11 +178,6 @@
     vim-matchup = {
       # tree-sitter powered % motions
       url = "github:andymass/vim-matchup";
-      flake = false;
-    };
-    iswap-nvim = {
-      url = "github:mizlan/iswap.nvim";
-      # url = "/home/mrcjk/git/github/forks/iswap.nvim";
       flake = false;
     };
     nvim-lint = {
@@ -297,10 +204,6 @@
       url = "github:folke/todo-comments.nvim";
       flake = false;
     };
-    fzf-lua = {
-      url = "github:ibhagwan/fzf-lua";
-      flake = false;
-    };
     lualine = {
       url = "github:hoob3rt/lualine.nvim";
       flake = false;
@@ -311,15 +214,6 @@
     };
     oil-nvim = {
       url = "github:stevearc/oil.nvim";
-      flake = false;
-    };
-    oil-git-status-nvim = {
-      url = "github:mrcjkb/oil-git-status.nvim/ftplugin";
-      # url = "/home/mrcjk/git/github/forks/nvim/oil-git-status.nvim";
-      flake = false;
-    };
-    toggleterm = {
-      url = "github:akinsho/toggleterm.nvim";
       flake = false;
     };
     harpoon = {
@@ -334,21 +228,12 @@
       url = "github:kevinhwang91/nvim-bqf";
       flake = false;
     };
-    formatter = {
-      url = "github:mhartington/formatter.nvim";
+    quicker-nvim = {
+      url = "github:stevearc/quicker.nvim";
       flake = false;
     };
     yanky = {
       url = "github:gbprod/yanky.nvim";
-      flake = false;
-    };
-    promise-async = {
-      # Dependency of nvim-ufo
-      url = "github:kevinhwang91/promise-async";
-      flake = false;
-    };
-    nvim-ufo = {
-      url = "github:kevinhwang91/nvim-ufo";
       flake = false;
     };
     statuscol = {
@@ -360,14 +245,6 @@
       url = "github:samjwill/nvim-unception";
       flake = false;
     };
-    tmux-nvim = {
-      url = "github:aserowy/tmux.nvim";
-      flake = false;
-    };
-    # hardtime-nvim = {
-    #   url = "github:m4xshen/hardtime.nvim";
-    #   flake = false;
-    # };
     term-edit-nvim = {
       url = "github:chomosuke/term-edit.nvim";
       flake = false;
@@ -380,15 +257,20 @@
       url = "github:folke/which-key.nvim";
       flake = false;
     };
+    snacks-nvim = {
+      url = "github:folke/snacks.nvim";
+      flake = false;
+    };
   };
 
   outputs = inputs @ {
     self,
     nixpkgs,
+    neovim-nightly,
     neorocks,
     gen-luarc,
     flake-utils,
-    pre-commit-hooks,
+    git-hooks,
     ...
   }: let
     supportedSystems = [
@@ -405,31 +287,27 @@
       pkgs = import nixpkgs {
         inherit system;
         overlays = [
+          neovim-nightly.overlays.default
           neorocks.overlays.default
           gen-luarc.overlays.default
           plugin-overlay
           neovim-overlay
-          inputs.haskell-tools.overlays.default
-          inputs.haskell-snippets.overlays.default
-          inputs.neotest-haskell.overlays.default
-          inputs.telescope-manix.overlays.default
-          inputs.rustaceanvim.overlays.default
         ];
       };
       shell = pkgs.mkShell {
         name = "nvim-devShell";
         buildInputs =
-          self.checks.${system}.pre-commit-check.enabledPackages
+          self.checks.${system}.git-hooks-check.enabledPackages
           ++ (with pkgs; [
             lua-language-server
             nil
           ]);
         shellHook = ''
-          ${self.checks.${system}.pre-commit-check.shellHook}
+          ${self.checks.${system}.git-hooks-check.shellHook}
           ln -fs ${pkgs.luarc-json} .luarc.json
         '';
       };
-      pre-commit-check = pre-commit-hooks.lib.${system}.run {
+      git-hooks-check = git-hooks.lib.${system}.run {
         src = self;
         hooks = {
           alejandra.enable = true;
@@ -442,13 +320,14 @@
         default = nvim;
         nvim = pkgs.nvim-pkg;
         nvim-dev = pkgs.nvim-dev;
+        nvim-profile = pkgs.nvim-profile;
         nightly = pkgs.neovim-nightly;
       };
       devShells = {
         default = shell;
       };
       checks = {
-        inherit pre-commit-check;
+        inherit git-hooks-check;
       };
     })
     // {
