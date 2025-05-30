@@ -19,7 +19,7 @@ opt.incsearch = true
 opt.hlsearch = true
 
 opt.spell = true
-opt.spelllang = 'en,de_ch'
+opt.spelllang = 'en'
 
 -- On pressing tab, insert spaces
 opt.expandtab = true
@@ -62,6 +62,7 @@ if vim.fn.executable('nu') == 1 then
 elseif vim.fn.executable('zsh') == 1 then
   opt.shell = 'zsh'
 end
+opt.shell = 'bash'
 
 opt.timeout = true
 opt.timeoutlen = 300
